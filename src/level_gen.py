@@ -1,13 +1,15 @@
 import random
 
 class LevelGenerator:
-    def __init__(self, width=21, height=21):
+    def __init__(self, width=31, height=31):
         # Ensure dimensions are odd for maze generation
         self.width = width if width % 2 != 0 else width + 1
         self.height = height if height % 2 != 0 else height + 1
         self.grid = [[0 for _ in range(self.width)] for _ in range(self.height)]
         self.player_start = (1, 1)
         self.enemy_spawns = []
+        self.key_spawns = []
+        self.exit_pos = None
 
     def generate(self):
         """
@@ -16,6 +18,8 @@ class LevelGenerator:
         1 = Floor
         2 = Player Start
         3 = Enemy Spawn
+        4 = Key
+        5 = Exit
         """
         # Start with all walls
         self.grid = [[0 for _ in range(self.width)] for _ in range(self.height)]
@@ -49,31 +53,45 @@ class LevelGenerator:
         # Place player start
         self.grid[self.player_start[1]][self.player_start[0]] = 2
 
-        # Place enemies (find dead ends or far corners)
-        possible_spawns = []
+        # Identify all floor tiles for placements
+        floor_tiles = []
         for y in range(1, self.height - 1):
             for x in range(1, self.width - 1):
                 if self.grid[y][x] == 1:
-                    # Check distance from player
-                    dist = abs(x - self.player_start[0]) + abs(y - self.player_start[1])
-                    if dist > 10:
-                        possible_spawns.append((x, y))
+                    floor_tiles.append((x, y))
 
-        # Pick 3 random spawns
-        for _ in range(min(3, len(possible_spawns))):
-            sx, sy = random.choice(possible_spawns)
-            self.grid[sy][sx] = 3
-            self.enemy_spawns.append((sx, sy))
-            possible_spawns.remove((sx, sy))
+        # Place Exit (farthest from start)
+        self.exit_pos = max(floor_tiles, key=lambda p: abs(p[0]-start_x) + abs(p[1]-start_y))
+        self.grid[self.exit_pos[1]][self.exit_pos[0]] = 5
+        floor_tiles.remove(self.exit_pos)
+
+        # Place 3 Keys (spread out)
+        for _ in range(3):
+            if not floor_tiles: break
+            # Pick random far from start and other keys
+            best_k = max(random.sample(floor_tiles, min(10, len(floor_tiles))),
+                         key=lambda p: abs(p[0]-start_x) + abs(p[1]-start_y))
+            self.grid[best_k[1]][best_k[0]] = 4
+            self.key_spawns.append(best_k)
+            floor_tiles.remove(best_k)
+
+        # Place Enemies
+        for _ in range(5): # Increase enemy count
+            if not floor_tiles: break
+            spawn = random.choice(floor_tiles)
+            if abs(spawn[0]-start_x) + abs(spawn[1]-start_y) > 5: # Don't spawn on player
+                self.grid[spawn[1]][spawn[0]] = 3
+                self.enemy_spawns.append(spawn)
+                floor_tiles.remove(spawn)
 
         return self.grid
 
     def print_grid(self):
-        chars = {0: '#', 1: ' ', 2: 'P', 3: 'E'}
+        chars = {0: '#', 1: ' ', 2: 'P', 3: 'E', 4: 'K', 5: 'X'}
         for row in self.grid:
             print("".join(chars.get(cell, '?') for cell in row))
 
 if __name__ == "__main__":
-    gen = LevelGenerator(width=21, height=21)
+    gen = LevelGenerator(width=31, height=31)
     grid = gen.generate()
     gen.print_grid()
