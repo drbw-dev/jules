@@ -1,0 +1,6 @@
+ursina
+perlin-noise
+numpy
+pyinstaller
+screeninfo
+Pillow
